@@ -1,9 +1,12 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
+const jwt = require('jsonwebtoken');
 
 const Shelter = require('../../models/shelter')
 const router = express.Router();
 const ValidateRegisterInput = require('../../validate/shelter/register');
+const ValidateLoginInput = require('../../validate/shelter/login');
+const keyOrSecret = require('../../config/jwtsecret').keyOrSecret
 
 // test
 router.get('/test', (req, res) => {
@@ -50,6 +53,47 @@ router.post('/create', async(req, res) => {
       .status(400)
       .json(errors)
   }
+});
+
+
+
+
+// login (get token)
+
+router.post('/login', async (req, res) => {
+
+  const {errors, isValid} = ValidateLoginInput(req.body);
+
+  if (!isValid) {
+    res.status(400).json(errors);
+  }
+
+  const {email, password} = req.body;
+
+  const user = await Shelter.findOne({email});
+
+  if (!user) {
+    errors.user = `User with email: "${email}" is not registerd`
+    return res.status(404).json(errors)
+  };
+
+  const isMatched = await bcrypt.compare(password, user.password);
+
+  if(isMatched) {
+    const payload = {
+      id: user.id,
+      city: user.city,
+      name: user.name,
+      email: user.email
+    };
+
+    const token = await jwt.sign(payload, keyOrSecret, {expiresIn: 3600});
+
+    res.json(`Bearer ${token}`);
+  }
+
+  errors.password = 'Wrong password';
+  res.status(400).json(errors);
 });
 
 module.exports = router
