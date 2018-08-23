@@ -6,10 +6,8 @@ module.exports = data => {
 
   const errors = {}
 
-
   const validateEmail = email ? email : '';
   const validatePassword = password ? password : '';
-
 
   if (!Validator.isEmail(validateEmail)) {
     errors.email = 'Please enter valid email';

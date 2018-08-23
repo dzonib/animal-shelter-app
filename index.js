@@ -1,10 +1,12 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const bodyParser = require('body-parser');
+const passport = require('passport')
 
 mongoose.set('useFindAndModify', false);
 
 const shelterRoute = require('./routes/api/shelters');
+const animalRoute = require('./routes/api/animals');
 
 
 try {
@@ -25,8 +27,12 @@ const app = express();
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({extended: false}));
 
+app.use(passport.initialize());
 
-app.use('/api/shelter', shelterRoute)
+require('./config/passport')(passport);
+
+app.use('/api/animal', animalRoute);
+app.use('/api/shelter', shelterRoute);
 
 const port = process.env.PORT || 3000;
 

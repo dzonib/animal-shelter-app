@@ -1,6 +1,7 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const passport = require('passport')
 
 const Shelter = require('../../models/shelter')
 const router = express.Router();
@@ -24,7 +25,14 @@ router.post('/create', async(req, res) => {
       .json(errors);
   }
 
-  const {city, name, email, address, password} = req.body;
+  const {
+    city,
+    name,
+    email,
+    address,
+    password,
+    password2
+  } = req.body;
 
   try {
     const shelter = await Shelter.findOne({name});
@@ -35,7 +43,14 @@ router.post('/create', async(req, res) => {
         .json({error: 'Shelter already registered'});
     }
 
-    const newShelter = new Shelter({city, name, address, email, password, password2});
+    const newShelter = new Shelter({
+      city,
+      name,
+      address,
+      email,
+      password,
+      password2
+    });
 
     const salt = await bcrypt.genSalt(10);
 
@@ -55,45 +70,57 @@ router.post('/create', async(req, res) => {
   }
 });
 
-
-
-
 // login (get token)
 
-router.post('/login', async (req, res) => {
+router.post('/login', async(req, res) => {
 
   const {errors, isValid} = ValidateLoginInput(req.body);
 
   if (!isValid) {
-    res.status(400).json(errors);
+    return res
+      .status(400)
+      .json(errors);
   }
 
   const {email, password} = req.body;
 
-  const user = await Shelter.findOne({email});
+  try {
+    const user = await Shelter.findOne({email});
 
-  if (!user) {
-    errors.user = `User with email: "${email}" is not registerd`
-    return res.status(404).json(errors)
-  };
-
-  const isMatched = await bcrypt.compare(password, user.password);
-
-  if(isMatched) {
-    const payload = {
-      id: user.id,
-      city: user.city,
-      name: user.name,
-      email: user.email
+    if (!user) {
+      errors.user = `User with email: "${email}" is not registerd`;
+      return res
+        .status(404)
+        .json(errors)
     };
-
-    const token = await jwt.sign(payload, keyOrSecret, {expiresIn: 3600});
-
-    res.json(`Bearer ${token}`);
+  
+    const isMatched = await bcrypt.compare(password, user.password);
+  
+    if (isMatched) {
+  
+      const payload = {
+        id: user.id,
+        city: user.city,
+        name: user.name,
+        email: user.email
+      };
+  
+      const token = await jwt.sign(payload, keyOrSecret, {expiresIn: 3600});
+  
+      res.json(`Bearer ${token}`);
+    }
+  
+    errors.password = 'Wrong password';
+    res
+      .status(400)
+      .json(errors);
+  } catch(e) {
+    console.log(`Error --> ${e}`);
   }
-
-  errors.password = 'Wrong password';
-  res.status(400).json(errors);
 });
+
+router.get('/logged', passport.authenticate('jwt', {session: false}), (req, res) => {
+  res.send(req.user)
+})
 
 module.exports = router
